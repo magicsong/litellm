@@ -1025,16 +1025,17 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                             cast(ModelResponseStream, chunk)
                         )
                     )
-                    # Emit any just-queued output_item event
-                    if self._pending_response_events:
-                        return self._pending_response_events.pop(0)
                     response_api_chunk = (
                         self._transform_chat_completion_chunk_to_response_api_chunk(
                             chunk
                         )
                     )
                     if response_api_chunk:
-                        return response_api_chunk
+                        self._pending_response_events.append(response_api_chunk)
+                    # Emit the first queued event (output_item.added,
+                    # content_part.added, or the delta itself)
+                    if self._pending_response_events:
+                        return self._pending_response_events.pop(0)
                     # Otherwise, loop to next chunk
                 except StopIteration:
                     return self.common_done_event_logic(sync_mode=True)
